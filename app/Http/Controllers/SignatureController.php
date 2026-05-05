@@ -6,62 +6,79 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Signature;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class SignatureController extends Controller
 {
-
-    // ✅ New method: index to list all signatures
-    public function index()
+    // ✅ LIST + SEARCH + PAGINATION
+    public function index(Request $request)
     {
-        // Get all signatures with related user
-        $signatures = Signature::with('user')->latest()->get();
+        $search = $request->search;
+
+        $signatures = Signature::with('user')
+            ->when($search, function ($query) use ($search) {
+                $query->whereHas('user', function ($q) use ($search) {
+                    $q->where('name', 'like', "%$search%")
+                      ->orWhere('email', 'like', "%$search%");
+                });
+            })
+            ->latest()
+            ->paginate(5);
 
         return view('signature.index', compact('signatures'));
     }
+
     public function create()
     {
         return view('signature.create');
     }
 
-   public function store(Request $request)
-{
-    $request->validate([
-        'signature' => 'required'
-    ]);
+    // ✅ STORE
+    public function store(Request $request)
+    {
+        $request->validate([
+            'signature' => 'required'
+        ]);
 
-    $user = User::first();
+        $user = User::first();
 
-    if (! $user) {
-        return back()->with('error', 'No user found to attach signature');
+        if (! $user) {
+            return back()->with('error', 'No user found');
+        }
+
+        $signatureData = $request->signature;
+
+        if (strpos($signatureData, 'base64,') !== false) {
+            $signatureData = explode('base64,', $signatureData)[1];
+        }
+
+        $signatureBinary = base64_decode($signatureData);
+
+        if ($signatureBinary === false) {
+            return back()->with('error', 'Invalid signature');
+        }
+
+        $fileName = 'signature_' . Str::uuid() . '.png';
+
+        Storage::disk('public')->put('signatures/' . $fileName, $signatureBinary);
+
+        $user->signature()->create([
+            'filename' => $fileName
+        ]);
+
+        return redirect()->route('signature.index')->with('success', 'Signature saved successfully');
     }
 
-    // Get the base64 string
-    $signatureData = $request->signature;
+    // ✅ DELETE FUNCTION
+    public function destroy($id)
+    {
+        $signature = Signature::findOrFail($id);
 
-    // Remove base64 prefix if exists
-    if (strpos($signatureData, 'base64,') !== false) {
-        $signatureData = explode('base64,', $signatureData)[1];
+        // delete file
+        Storage::disk('public')->delete('signatures/' . $signature->filename);
+
+        $signature->delete();
+
+        return back()->with('success', 'Signature deleted successfully');
     }
-
-    // Decode base64
-    $signatureBinary = base64_decode($signatureData);
-
-    if ($signatureBinary === false) {
-        return back()->with('error', 'Invalid signature data');
-    }
-
-    // Generate unique filename
-    $fileName = 'signature_' . Str::uuid() . '.png';
-
-    // Save in storage/app/public/signatures
-    \Illuminate\Support\Facades\Storage::disk('public')->put('signatures/' . $fileName, $signatureBinary);
-
-    // Save record in database
-    $user->signature()->create([
-        'filename' => $fileName
-    ]);
-
-    return redirect()->route('signature.index')->with('success', 'Signature saved successfully');
-}
-
 }

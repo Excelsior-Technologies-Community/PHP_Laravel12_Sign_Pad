@@ -7,31 +7,46 @@ use Illuminate\Support\Str;
 
 class Signature extends Model
 {
-    protected $guarded = []; // Allow mass assignment for all fields
+    protected $guarded = [];
 
-    /**
-     * Automatically generate UUID when creating a record
-     */
+    protected $casts = [
+        'signed_at' => 'datetime',
+    ];
+
     protected static function booted()
     {
-        static::creating(function ($signature) {
+        static::creating(function (Signature $signature) {
             if (empty($signature->uuid)) {
                 $signature->uuid = (string) Str::uuid();
             }
         });
     }
 
-    /**
-     * Polymorphic relation to any model
-     */
     public function model()
     {
         return $this->morphTo();
     }
 
-        // A signature belongs to a user
     public function user()
     {
-        return $this->belongsTo(User::class, 'model_id'); // Assuming model_id stores user id
+        return $this->belongsTo(User::class, 'model_id');
+    }
+
+    public function request()
+    {
+        return $this->belongsTo(SignatureRequest::class, 'request_id');
+    }
+
+    public function isTurnToSign(): bool
+    {
+        if (!$this->request_id) {
+            return true;
+        }
+
+        return !$this->request
+            ->signatures()
+            ->where('signer_order', '<', $this->signer_order)
+            ->where('status', '!=', 'approved')
+            ->exists();
     }
 }

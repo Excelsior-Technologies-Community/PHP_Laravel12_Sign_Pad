@@ -13,10 +13,23 @@
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold text-gray-800">✍️ Signature Management</h1>
 
-        <a href="{{ route('signature.create') }}"
-           class="bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-lg shadow">
-            + Add Signature
-        </a>
+        <div class="flex gap-3">
+            {{-- NEW: link to the multi-signer envelopes list. Kept as a
+                 separate page/table instead of mixing into the table below,
+                 because this page's query only ever shows standalone,
+                 already-approved signatures (whereNull('request_id')) --
+                 a multi-signer envelope has several rows with different
+                 statuses and doesn't fit that shape cleanly. --}}
+            <a href="{{ route('signature.request.index') }}"
+               class="bg-indigo-500 hover:bg-indigo-600 text-white px-5 py-2 rounded-lg shadow">
+                👥 Multi-signer Requests
+            </a>
+
+            <a href="{{ route('signature.create') }}"
+               class="bg-green-500 hover:bg-green-600 text-white px-5 py-2 rounded-lg shadow">
+                + Add Signature
+            </a>
+        </div>
     </div>
 
     <!-- ALERT -->
@@ -74,16 +87,23 @@
                     </td>
 
                     <td class="px-4 py-3 text-center">
-                        <form action="{{ route('signature.delete', $signature->id) }}"
-                              method="POST"
-                              onsubmit="return confirm('Delete this signature?')">
-                            @csrf
-                            @method('DELETE')
+                        <div class="flex gap-2 justify-center">
+                            <a href="{{ route('signature.pdf', $signature->id) }}"
+                               class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg shadow">
+                                📄 Certificate
+                            </a>
 
-                            <button class="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded-lg shadow">
-                                Delete
-                            </button>
-                        </form>
+                            <form action="{{ route('signature.delete', $signature->id) }}"
+                                  method="POST"
+                                  onsubmit="return confirm('Delete this signature?')">
+                                @csrf
+                                @method('DELETE')
+
+                                <button class="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded-lg shadow">
+                                    Delete
+                                </button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 @empty

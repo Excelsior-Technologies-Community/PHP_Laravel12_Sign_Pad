@@ -729,9 +729,3 @@ PHP_Laravel12_Sign_Pad
 ---
 
 Your PHP_Laravel12_Sign_Pad Project is now ready!
-
- 
-<<<<<<< HEAD
-
-=======
->>>>>>> development
